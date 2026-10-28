@@ -8,7 +8,10 @@ if [[ -f "$ENV_FILE" ]]; then
   while IFS='=' read -r key value; do
     [[ "$key" =~ ^[A-Z_][A-Z0-9_]*$ ]] || continue
     [[ -n "${!key:-}" ]] && continue
+    value="${value%$'\r'}"                                  # CRLF line endings
+    value="${value#"${value%%[![:space:]]*}"}"; value="${value%"${value##*[![:space:]]}"}"
     value="${value%\"}"; value="${value#\"}"
+    value="${value%\'}"; value="${value#\'}"
     export "$key=$value"
   done < "$ENV_FILE"
 fi
@@ -66,12 +69,35 @@ api() {
     echo "$2 $1$3 → HTTP $status" >&2
     cat "$out" >&2; echo >&2
     rm -f "$out"
+    if [[ "$status" == 401 ]]; then
+      echo >&2 "nRF Cloud rejected NRFCLOUD_API_KEY. It must be the team REST API key: 40 lowercase hex
+characters, from nrfcloud.com → (select the team) → User Account → Current Team Details → API key.
+Organization Auth Tokens, Memfault keys and device/project keys don't work here."
+      [[ "$NRFCLOUD_API_KEY" =~ ^[0-9a-f]{40}$ ]] ||
+        echo >&2 "The current value is ${#NRFCLOUD_API_KEY} characters and not 40-hex, so it's a different credential."
+    fi
     return 1
   fi
   cat "$out"; rm -f "$out"
 }
 
-# Team ID of the account that owns NRFCLOUD_API_KEY.
-lookup_team_id() {
-  api "$NRFCLOUD_API" GET /account | jq -r '.team.tenantId // (.mqttTopicPrefix | split("/")[1]) // empty'
+# nRF Cloud API keys are per user *and* team, and the MRS API has no team
+# parameter: destinations are always created on the API key's team. Make sure
+# that is the team in NRFCLOUD_TEAM_ID (saving it if empty) before touching MRS.
+ensure_team() {
+  local account key_team key_team_name
+  account="$(api "$NRFCLOUD_API" GET /account)"
+  key_team=$(jq -r '.team.tenantId // (.mqttTopicPrefix | split("/")[1]) // empty' <<<"$account")
+  key_team_name=$(jq -r '.team.name // empty' <<<"$account")
+  [[ -n "$key_team" ]] || die "could not determine the team of NRFCLOUD_API_KEY from GET /account"
+
+  if [[ -z "${NRFCLOUD_TEAM_ID:-}" ]]; then
+    set_env NRFCLOUD_TEAM_ID "$key_team"
+  elif [[ "$key_team" != "$NRFCLOUD_TEAM_ID" ]]; then
+    die "NRFCLOUD_API_KEY belongs to team ${key_team_name:+'$key_team_name' }($key_team),
+       but NRFCLOUD_TEAM_ID is $NRFCLOUD_TEAM_ID.
+       API keys are per team: on nrfcloud.com switch to team $NRFCLOUD_TEAM_ID,
+       open User Account → Current Team Details, and put that API key in .env."
+  fi
+  echo "nRF Cloud team: ${key_team_name:+$key_team_name }($key_team)" >&2
 }

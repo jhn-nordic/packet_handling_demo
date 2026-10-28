@@ -43,8 +43,12 @@ Thingy:91 X ── LTE-M/NB-IoT ──► nRF Cloud ── MRS webhook (HTTPS) �
 
 ## Prerequisites
 
-- An nRF Cloud team where you are **Admin or Owner**, plus its REST API key
-  (nrfcloud.com → User Account → API key). A Developer plan includes one free MRS destination.
+- An nRF Cloud team where you are **Admin or Owner**, plus **that team's** REST API key.
+  API keys are per user *and* team, and MRS creates the destination on whichever team the key
+  belongs to. If you're on several teams, switch to the right team on nrfcloud.com first, then
+  copy the key from User Account → Current Team Details. The scripts refuse to run when the key's
+  team differs from `NRFCLOUD_TEAM_ID`; leave `NRFCLOUD_TEAM_ID` empty to use the key's team.
+  A Developer plan includes one free MRS destination.
 - A Thingy:91 X running the SmartParcel firmware, or use `scripts/send-test.sh`.
 - `docker`, `curl`, `jq`, `openssl`, and for Fly.io [`flyctl`](https://fly.io/docs/flyctl/install/).
 
@@ -167,6 +171,7 @@ webhook (with the token/secret) can write.
 | Symptom | Check |
 |---|---|
 | `mrs.sh create` says not reachable | `curl https://<app>.fly.dev/api/health`; `fly logs` |
+| `NRFCLOUD_API_KEY belongs to team …` | The key is from another team. Switch team on nrfcloud.com and copy that team's key |
 | Destination stays unverified | `NRFCLOUD_TEAM_ID` set as a Fly secret? `fly logs \| grep PIN` → `mrs.sh verify` |
 | Webhook logs `invalid x-api-key` / `invalid signature` | `.env` token/secret differ from the Fly secrets. Run `fly-deploy.sh`, then `mrs.sh create` |
 | Dashboard stays on "Connecting…" | Browser console; is `/api/health` reachable from the browser? |

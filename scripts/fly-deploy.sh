@@ -23,10 +23,8 @@ fly auth whoami >/dev/null 2>&1 || die "not logged in to Fly — run: fly auth l
 [[ -n "${NRFCLOUD_WEBHOOK_SECRET:-}" ]] || set_env NRFCLOUD_WEBHOOK_SECRET "$(openssl rand -hex 32)"
 
 # ── 2. Team ID (needed so the MRS destination verifies automatically) ──
-if [[ -z "${NRFCLOUD_TEAM_ID:-}" && -n "${NRFCLOUD_API_KEY:-}" ]]; then
-  set_env NRFCLOUD_TEAM_ID "$(lookup_team_id)"
-  echo "nRF Cloud team ID: $NRFCLOUD_TEAM_ID"
-fi
+# Also catches an API key from another team than NRFCLOUD_TEAM_ID before anything is deployed.
+[[ -n "${NRFCLOUD_API_KEY:-}" ]] && ensure_team
 [[ -n "${NRFCLOUD_TEAM_ID:-}" ]] || echo "warning: NRFCLOUD_TEAM_ID unknown — MRS verification will need the PIN (scripts/mrs.sh verify)" >&2
 
 # ── 3. App + volume ──

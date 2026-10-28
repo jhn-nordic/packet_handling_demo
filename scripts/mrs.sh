@@ -12,7 +12,10 @@
 #   resend              send a new verification PIN to the destination
 #   verify PIN          verify with the 6-digit PIN (see `fly logs` / `docker compose logs`)
 #   delete              delete the destination
-#   team                print your nRF Cloud team ID and save it to .env
+#   team                print the API key's team ID (saved to .env if empty)
+#
+# Every command first checks that NRFCLOUD_API_KEY belongs to NRFCLOUD_TEAM_ID:
+# nRF Cloud API keys are per team, and destinations are created on the key's team.
 #
 # Reads NRFCLOUD_API_KEY, NRFCLOUD_WEBHOOK_TOKEN/SECRET and FLY_APP from .env.
 # The destination is found by name: $MRS_DESTINATION_NAME (default smartparcel-<FLY_APP>).
@@ -41,10 +44,7 @@ show() {
 }
 
 cmd_team() {
-  local team; team="$(lookup_team_id)"
-  [[ -n "$team" ]] || die "could not determine team ID from /account"
-  set_env NRFCLOUD_TEAM_ID "$team"
-  echo "$team"
+  echo "$NRFCLOUD_TEAM_ID" # ensure_team already checked/saved it
 }
 
 cmd_list() {
@@ -102,7 +102,8 @@ cmd_create() {
   done
   echo
   cat >&2 <<EOF
-Destination not verified automatically (is NRFCLOUD_TEAM_ID set on the server?).
+Destination not verified automatically. The server must echo team $NRFCLOUD_TEAM_ID —
+if you changed NRFCLOUD_TEAM_ID after deploying, run scripts/fly-deploy.sh again.
 The webhook logged a 6-digit PIN — find it with:
   fly logs --app ${FLY_APP:-<app>} | grep PIN      (or: docker compose logs | grep PIN)
 then run:
@@ -134,6 +135,6 @@ cmd_delete() {
 }
 
 case "${1:-}" in
-  create|status|list|test|resend|verify|delete|team) cmd="$1"; shift; "cmd_$cmd" "$@" ;;
+  create|status|list|test|resend|verify|delete|team) cmd="$1"; shift; ensure_team; "cmd_$cmd" "$@" ;;
   *) sed -n '2,22p' "$0"; exit 1 ;;
 esac
