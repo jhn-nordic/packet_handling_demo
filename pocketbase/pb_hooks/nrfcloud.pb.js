@@ -4,8 +4,9 @@
 //
 //   POST /api/nrfcloud/webhook
 //
-// 1. Answers the MRS destination verification request (echoes the team ID
-//    header so the destination is verified automatically).
+// 1. Answers the MRS destination verification request (echoes the
+//    x-nrfcloud-team-id header it received, so the destination is verified
+//    automatically).
 // 2. Authenticates deliveries with the destination token (x-api-key) and/or
 //    secret (x-nrfcloud-signature = HMAC-SHA256 of the raw body).
 // 3. Decodes each message, stores it in `raw_messages`, upserts `devices`
@@ -15,7 +16,6 @@
 // Environment (set with `fly secrets set` or in .env for docker compose):
 //   NRFCLOUD_WEBHOOK_TOKEN   token configured on the MRS destination
 //   NRFCLOUD_WEBHOOK_SECRET  secret configured on the MRS destination
-//   NRFCLOUD_TEAM_ID         your nRF Cloud team ID (for auto-verification)
 //   RAW_RETENTION_DAYS       prune raw_messages older than this (default 7, 0 = keep)
 //
 // Hook handlers run in isolated JS contexts, so everything they use must be
@@ -26,9 +26,9 @@ routerAdd("POST", "/api/nrfcloud/webhook", (e) => {
 
   const token = $os.getenv("NRFCLOUD_WEBHOOK_TOKEN")
   const secret = $os.getenv("NRFCLOUD_WEBHOOK_SECRET")
-  const teamId = $os.getenv("NRFCLOUD_TEAM_ID") || e.request.header.get("x-nrfcloud-team-id")
+  const teamId = e.request.header.get("x-nrfcloud-team-id")
 
-  // Echo the team ID on every response — MRS uses it to auto-verify the destination.
+  // Echo the team ID header on every response — MRS uses it to auto-verify the destination.
   if (teamId) e.response.header().set("x-nrfcloud-team-id", teamId)
 
   const rawBody = toString(e.request.body)
@@ -45,7 +45,7 @@ routerAdd("POST", "/api/nrfcloud/webhook", (e) => {
   if (body.type === "system.verification") {
     const pin = body.messages && body.messages[0] && body.messages[0].verificationToken
     console.log(`nrfcloud: verification request received (PIN ${pin}). ` +
-      (teamId ? "Team ID echoed, should auto-verify." : "Set NRFCLOUD_TEAM_ID or verify with: scripts/mrs.sh verify <PIN>"))
+      (teamId ? "Team ID echoed, should auto-verify." : "No x-nrfcloud-team-id header; verify with: scripts/mrs.sh verify <PIN>"))
     return e.json(200, { ok: true })
   }
 

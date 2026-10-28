@@ -50,54 +50,50 @@ default_base_url() {
   else echo "http://localhost:8090"; fi
 }
 
-# ─── nRF Cloud REST APIs ───────────────────────────────────────────
+# ─── nRF Cloud REST API ────────────────────────────────────────────
+#
+# Message Routing destinations are managed through the organization/project
+# scoped endpoints, authenticated with an Organization Auth Token (OAT).
+# Destinations are organization-wide; use the organization's default project.
 
 NRFCLOUD_API="${NRFCLOUD_API:-https://api.nrfcloud.com/v1}"
-MRS_API="${MRS_API:-https://api.message-routing.nrfcloud.com/v2}"
 
-# api BASE METHOD PATH [JSON_BODY] — prints the body, fails on non-2xx.
+require_nrfcloud_config() {
+  if [[ -z "${NRFCLOUD_ORG_TOKEN:-}" && -n "${NRFCLOUD_API_KEY:-}" ]]; then
+    die "NRFCLOUD_API_KEY (legacy team API key) is no longer used.
+       Create an Organization Auth Token in nRF Cloud (Admin → Organization Auth Tokens)
+       and set NRFCLOUD_ORG_TOKEN, NRFCLOUD_ORG and NRFCLOUD_PROJECT in .env instead."
+  fi
+  [[ -n "${NRFCLOUD_ORG_TOKEN:-}" ]] || die "NRFCLOUD_ORG_TOKEN is not set (nRF Cloud → Admin → Organization Auth Tokens)"
+  [[ -n "${NRFCLOUD_ORG:-}" && -n "${NRFCLOUD_PROJECT:-}" ]] ||
+    die "set NRFCLOUD_ORG and NRFCLOUD_PROJECT in .env: the slugs in the nRF Cloud URL
+       …/organizations/<ORG>/projects/<PROJECT>/… (use the organization's default project)"
+}
+
+destinations_url() {
+  echo "$NRFCLOUD_API/organizations/$NRFCLOUD_ORG/projects/$NRFCLOUD_PROJECT/destinations"
+}
+
+# api METHOD URL [JSON_BODY] — prints the body, fails on non-2xx.
 api() {
-  [[ -n "${NRFCLOUD_API_KEY:-}" ]] || die "NRFCLOUD_API_KEY is not set (nrfcloud.com → User Account → API key)"
+  require_nrfcloud_config
   local out status data=()
-  [[ -n "${4:-}" ]] && data=(--data "$4")
+  [[ -n "${3:-}" ]] && data=(--data "$3")
   out="$(mktemp)"
-  status=$(curl -sS -o "$out" -w '%{http_code}' -X "$2" \
-    -H "Authorization: Bearer $NRFCLOUD_API_KEY" \
+  status=$(curl -sS -o "$out" -w '%{http_code}' -X "$1" \
+    -H "Authorization: Bearer $NRFCLOUD_ORG_TOKEN" \
     -H "content-type: application/json" \
-    ${data[@]+"${data[@]}"} "$1$3")
+    ${data[@]+"${data[@]}"} "$2")
   if [[ "$status" != 2* ]]; then
-    echo "$2 $1$3 → HTTP $status" >&2
+    echo "$1 $2 → HTTP $status" >&2
     cat "$out" >&2; echo >&2
     rm -f "$out"
-    if [[ "$status" == 401 ]]; then
-      echo >&2 "nRF Cloud rejected NRFCLOUD_API_KEY. It must be the team REST API key: 40 lowercase hex
-characters, from nrfcloud.com → (select the team) → User Account → Current Team Details → API key.
-Organization Auth Tokens, Memfault keys and device/project keys don't work here."
-      [[ "$NRFCLOUD_API_KEY" =~ ^[0-9a-f]{40}$ ]] ||
-        echo >&2 "The current value is ${#NRFCLOUD_API_KEY} characters and not 40-hex, so it's a different credential."
-    fi
+    case "$status" in
+      401) echo >&2 "nRF Cloud rejected NRFCLOUD_ORG_TOKEN. Create a new one under Admin → Organization Auth Tokens." ;;
+      403) echo >&2 "The token isn't allowed to manage destinations in organization '$NRFCLOUD_ORG'. Managing Message Routing needs Organization Admin rights." ;;
+      404) echo >&2 "Not found: check NRFCLOUD_ORG='$NRFCLOUD_ORG' and NRFCLOUD_PROJECT='$NRFCLOUD_PROJECT' against the slugs in the nRF Cloud URL. Destinations are managed from the organization's default project." ;;
+    esac
     return 1
   fi
   cat "$out"; rm -f "$out"
-}
-
-# nRF Cloud API keys are per user *and* team, and the MRS API has no team
-# parameter: destinations are always created on the API key's team. Make sure
-# that is the team in NRFCLOUD_TEAM_ID (saving it if empty) before touching MRS.
-ensure_team() {
-  local account key_team key_team_name
-  account="$(api "$NRFCLOUD_API" GET /account)"
-  key_team=$(jq -r '.team.tenantId // (.mqttTopicPrefix | split("/")[1]) // empty' <<<"$account")
-  key_team_name=$(jq -r '.team.name // empty' <<<"$account")
-  [[ -n "$key_team" ]] || die "could not determine the team of NRFCLOUD_API_KEY from GET /account"
-
-  if [[ -z "${NRFCLOUD_TEAM_ID:-}" ]]; then
-    set_env NRFCLOUD_TEAM_ID "$key_team"
-  elif [[ "$key_team" != "$NRFCLOUD_TEAM_ID" ]]; then
-    die "NRFCLOUD_API_KEY belongs to team ${key_team_name:+'$key_team_name' }($key_team),
-       but NRFCLOUD_TEAM_ID is $NRFCLOUD_TEAM_ID.
-       API keys are per team: on nrfcloud.com switch to team $NRFCLOUD_TEAM_ID,
-       open User Account → Current Team Details, and put that API key in .env."
-  fi
-  echo "nRF Cloud team: ${key_team_name:+$key_team_name }($key_team)" >&2
 }

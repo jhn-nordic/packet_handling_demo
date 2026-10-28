@@ -7,7 +7,7 @@ on-device Neuton AI model, nRF Cloud forwards the results via the **Message Rout
 
 Everything server-side is one Docker container: [PocketBase](https://pocketbase.io) (SQLite +
 REST + realtime) with a small JS hook that receives the nRF Cloud webhook and serves the
-dashboard. Deploy it to Fly.io in a few minutes, point your own nRF Cloud team at it, done.
+dashboard. Deploy it to Fly.io in a few minutes, point your own nRF Cloud organization at it, done.
 
 ```
 Thingy:91 X ── LTE-M/NB-IoT ──► nRF Cloud ── MRS webhook (HTTPS) ──► PocketBase on Fly.io
@@ -28,13 +28,13 @@ Thingy:91 X ── LTE-M/NB-IoT ──► nRF Cloud ── MRS webhook (HTTPS) �
 | `pocketbase/pb_public/index.html` | The dashboard (single HTML file, served at `/`) |
 | `Dockerfile`, `docker-compose.yml` | Container image and local run |
 | `fly.toml`, `scripts/fly-deploy.sh` | Fly.io deployment |
-| `scripts/mrs.sh` | Create, verify, test and delete the MRS destination on **your** nRF Cloud team |
+| `scripts/mrs.sh` | Create, verify, test and delete the MRS destination in **your** nRF Cloud organization |
 | `firmware/parcel_tracker.hex` | Thingy:91 X (nRF9151) firmware, flashed with a debug probe. See [firmware/README.md](firmware/README.md) |
 | `scripts/send-test.sh` | Sends fake signed nRF Cloud deliveries, so you can demo without a device |
 
 ### Differences from the Supabase version
 
-- **No device whitelist.** Every device on the nRF Cloud team that MRS routes to the destination is accepted.
+- **No device whitelist.** Every device in the nRF Cloud organization that MRS routes to the destination is accepted.
 - **Device filter.** When more than one device has reported, a **Device** selector appears in the
   dashboard header. Choosing a device resets the session and shows only that device. The choice
   is kept in the URL (`/?device=<device-id>`), so you can bookmark a booth screen per parcel. With
@@ -44,11 +44,17 @@ Thingy:91 X ── LTE-M/NB-IoT ──► nRF Cloud ── MRS webhook (HTTPS) �
 
 ## Prerequisites
 
-- An nRF Cloud team where you are **Admin or Owner**, plus **that team's** REST API key.
-  API keys are per user *and* team, and MRS creates the destination on whichever team the key
-  belongs to. If you're on several teams, switch to the right team on nrfcloud.com first, then
-  copy the key from User Account → Current Team Details. The scripts refuse to run when the key's
-  team differs from `NRFCLOUD_TEAM_ID`; leave `NRFCLOUD_TEAM_ID` empty to use the key's team.
+- An nRF Cloud organization where you are **Organization Admin** (required to manage Message
+  Routing), and three values for `.env`:
+  - `NRFCLOUD_ORG_TOKEN`: an **Organization Auth Token** (OAT). Create one under
+    **Admin → Organization Auth Tokens** and copy it right away; it's shown only once.
+  - `NRFCLOUD_ORG` and `NRFCLOUD_PROJECT`: the slugs in the nRF Cloud URL,
+    `…/organizations/<ORG>/projects/<PROJECT>/…`. Destinations are organization-wide and managed
+    from the organization's **default project**, so use that project's slug.
+
+  The scripts call the organization/project scoped endpoints on `api.nrfcloud.com/v1` with the
+  OAT as a Bearer token. The legacy team API key, `/account` lookup and separate MRS API host
+  aren't used.
   A Developer plan includes one free MRS destination.
 - A Thingy:91 X running the SmartParcel firmware (`firmware/parcel_tracker.hex`; see
   [firmware/README.md](firmware/README.md) for how to flash it), or use `scripts/send-test.sh`.
@@ -58,7 +64,8 @@ Thingy:91 X ── LTE-M/NB-IoT ──► nRF Cloud ── MRS webhook (HTTPS) �
 
 ```sh
 cp .env.example .env
-# edit .env: NRFCLOUD_API_KEY, FLY_APP (globally unique), PB_ADMIN_EMAIL, PB_ADMIN_PASSWORD
+# edit .env: NRFCLOUD_ORG_TOKEN, NRFCLOUD_ORG, NRFCLOUD_PROJECT, FLY_APP (globally unique),
+#           PB_ADMIN_EMAIL, PB_ADMIN_PASSWORD
 
 fly auth login
 scripts/fly-deploy.sh      # creates the app + volume, generates webhook token/secret, deploys
@@ -67,7 +74,7 @@ scripts/mrs.sh create      # creates the MRS destination → https://$FLY_APP.fl
 
 `mrs.sh create` waits until nRF Cloud reports the destination as **verified**.
 
-Then get the Thingy:91 X onto the same team:
+Then get the Thingy:91 X into the same organization:
 
 1. Flash `firmware/parcel_tracker.hex`.
 2. If the device isn't claimed on your nRF Cloud account yet, claim it: run
@@ -83,9 +90,8 @@ so you can also see the device filter.
 What `fly-deploy.sh` does (it's safe to re-run, for example after changing the dashboard):
 
 1. Generates `NRFCLOUD_WEBHOOK_TOKEN` and `NRFCLOUD_WEBHOOK_SECRET` into `.env` if they're empty.
-2. Looks up your team ID with the API key and saves it as `NRFCLOUD_TEAM_ID`.
-3. Creates the Fly app and a 1 GB volume `pb_data` in `FLY_REGION`.
-4. Sets the values above (and the admin login) as Fly secrets, then runs `fly deploy --ha=false`.
+2. Creates the Fly app and a 1 GB volume `pb_data` in `FLY_REGION`.
+3. Sets the webhook token and secret (and the admin login) as Fly secrets, then runs `fly deploy --ha=false`.
 
 The app runs on a single `shared-cpu-1x` / 256 MB machine that is always on. That's a few US
 dollars per month; see [Fly pricing](https://fly.io/docs/about/pricing/). SQLite lives on the
@@ -107,14 +113,14 @@ cloudflared tunnel --url http://localhost:8090     # or: ngrok http 8090
 scripts/mrs.sh create https://<random>.trycloudflare.com
 ```
 
-Set the token, secret and `NRFCLOUD_TEAM_ID` in `.env` before `docker compose up`, so the
-container and the destination share the same credentials. `mrs.sh team` fills in the team ID.
+Set the webhook token and secret in `.env` before `docker compose up`, so the container and the
+destination share the same credentials.
 
 ## Managing the MRS destination
 
 ```sh
 scripts/mrs.sh status          # verified? recent delivery errors?
-scripts/mrs.sh list            # all destinations on the team
+scripts/mrs.sh list            # all destinations in the organization
 scripts/mrs.sh test            # nRF Cloud sends a test message
 scripts/mrs.sh resend          # new verification PIN …
 scripts/mrs.sh verify 123456   # … and confirm it
@@ -124,17 +130,18 @@ scripts/mrs.sh delete
 - The destination is found by name: `MRS_DESTINATION_NAME`, default `smartparcel-<FLY_APP>`.
   Running `create` again updates the URL, token and secret instead of creating a duplicate.
 - **Verification.** nRF Cloud POSTs a verification message as soon as the destination is created.
-  The webhook echoes `x-nrfcloud-team-id`, so verification is automatic when `NRFCLOUD_TEAM_ID`
-  is set on the server. Otherwise the webhook logs the PIN; get it with
-  `fly logs | grep PIN` and run `scripts/mrs.sh verify <PIN>`.
+  The webhook echoes back the `x-nrfcloud-team-id` header it receives, so verification is
+  automatic. As a fallback the webhook logs the PIN; get it with `fly logs | grep PIN` and run
+  `scripts/mrs.sh verify <PIN>`.
 - **Authentication.** Each delivery carries the token in `x-api-key` and an HMAC-SHA256 of the raw
   body in `x-nrfcloud-signature`. The webhook checks both whenever the matching env var is set.
 - **Filtering.** The destination only receives the `device_messages` and `shadow` categories by
   default, so you aren't billed for location or FOTA traffic the demo ignores. Change this with
   `MRS_CATEGORIES=location,device_messages scripts/mrs.sh create`, or route everything with
   `MRS_CATEGORIES=`.
-- API reference: <https://docs.message-routing.nrfcloud.com> ·
-  Docs: <https://docs.nrfcloud.com/docs/nrfcloud/message-routing>
+- Endpoints used: `GET/POST /v1/organizations/{ORG}/projects/{PROJECT}/destinations`, plus
+  `PATCH/DELETE …/destinations/{ID}`, `POST …/{ID}/test`, `POST …/{ID}/verification` and
+  `PATCH …/{ID}/verification/confirm`. Docs: <https://docs.nrfcloud.com/docs/nrfcloud/message-routing>
 
 ## Message format
 
@@ -182,10 +189,12 @@ webhook (with the token/secret) can write.
 | Symptom | Check |
 |---|---|
 | `mrs.sh create` says not reachable | `curl https://<app>.fly.dev/api/health`; `fly logs` |
-| `NRFCLOUD_API_KEY belongs to team …` | The key is from another team. Switch team on nrfcloud.com and copy that team's key |
-| Destination stays unverified | `NRFCLOUD_TEAM_ID` set as a Fly secret? `fly logs \| grep PIN` → `mrs.sh verify` |
+| `mrs.sh` gets HTTP 401 | The OAT is wrong or was deleted. Create a new one under Admin → Organization Auth Tokens |
+| `mrs.sh` gets HTTP 403 | Managing destinations needs Organization Admin rights in `NRFCLOUD_ORG` |
+| `mrs.sh` gets HTTP 404 | `NRFCLOUD_ORG` / `NRFCLOUD_PROJECT` don't match the URL slugs, or the project isn't the organization's default project |
+| Destination stays unverified | `fly logs \| grep PIN` → `mrs.sh verify <PIN>` |
 | Webhook logs `invalid x-api-key` / `invalid signature` | `.env` token/secret differ from the Fly secrets. Run `fly-deploy.sh`, then `mrs.sh create` |
 | Dashboard stays on "Connecting…" | Browser console; is `/api/health` reachable from the browser? |
-| Device log says `Provisioning failed, device not claimed` | Claim it to your team: see [firmware/README.md](firmware/README.md#claim-the-device-on-your-nrf-cloud-account) |
-| Device is connected but nothing reaches the webhook | The device is on a different nRF Cloud team than the MRS destination. Check **Fleet → Devices** on the team behind `NRFCLOUD_API_KEY` |
+| Device log says `Provisioning failed, device not claimed` | Claim it to your organization: see [firmware/README.md](firmware/README.md#claim-the-device-on-your-nrf-cloud-account) |
+| Device is connected but nothing reaches the webhook | The device is in a different nRF Cloud organization than the MRS destination. Check **Fleet → Devices** in `NRFCLOUD_ORG` |
 | Messages arrive but no classification | Check `raw_messages` in the admin UI and whether `message.data` holds `classification`. `mrs.sh status` lists delivery errors |

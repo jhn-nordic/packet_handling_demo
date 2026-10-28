@@ -7,17 +7,17 @@
 #   create [BASE_URL]   create or update the destination and wait for verification
 #                       BASE_URL defaults to $PUBLIC_URL, then https://$FLY_APP.fly.dev
 #   status              show the destination (verified, state, recent errors)
-#   list                list all destinations on the team
+#   list                list all destinations in the organization
 #   test                ask nRF Cloud to send a test message to the destination
 #   resend              send a new verification PIN to the destination
 #   verify PIN          verify with the 6-digit PIN (see `fly logs` / `docker compose logs`)
 #   delete              delete the destination
-#   team                print the API key's team ID (saved to .env if empty)
 #
-# Every command first checks that NRFCLOUD_API_KEY belongs to NRFCLOUD_TEAM_ID:
-# nRF Cloud API keys are per team, and destinations are created on the key's team.
+# Uses the organization/project scoped nRF Cloud API with an Organization Auth
+# Token: NRFCLOUD_ORG_TOKEN, NRFCLOUD_ORG and NRFCLOUD_PROJECT (the slugs in the
+# nRF Cloud URL; destinations are managed from the organization's default project).
 #
-# Reads NRFCLOUD_API_KEY, NRFCLOUD_WEBHOOK_TOKEN/SECRET and FLY_APP from .env.
+# Also reads NRFCLOUD_WEBHOOK_TOKEN/SECRET and FLY_APP from .env.
 # The destination is found by name: $MRS_DESTINATION_NAME (default smartparcel-<FLY_APP>).
 #
 # MRS_CATEGORIES (comma-separated) limits which messages are routed; default
@@ -28,9 +28,13 @@ source "$(dirname "$0")/lib.sh"
 NAME="${MRS_DESTINATION_NAME:-smartparcel-${FLY_APP:-local}}"
 CATEGORIES="${MRS_CATEGORIES-device_messages,shadow}"
 
+# List responses are expected as {items: [...]}; accept a bare array too.
+list_destinations() {
+  api GET "$DEST?pageLimit=100" | jq -c '(.items? // .)[]'
+}
+
 find_id() {
-  api "$MRS_API" GET "/destination?pageLimit=100" |
-    jq -r --arg n "$NAME" '.items[] | select(.name == $n) | .id' | head -1
+  list_destinations | jq -r --arg n "$NAME" 'select(.name == $n) | .id' | head -1
 }
 
 require_id() {
@@ -43,18 +47,14 @@ show() {
   jq '{id, name, url: .config.url, verified, isEnabled, state, filter, errors: [.errors[]? | {createdAt, reason: .reason.message, status: .reason.response.status}]}'
 }
 
-cmd_team() {
-  echo "$NRFCLOUD_TEAM_ID" # ensure_team already checked/saved it
-}
-
 cmd_list() {
-  api "$MRS_API" GET "/destination?pageLimit=100" |
-    jq -r '.items[] | [.id, .name, (if .verified then "verified" else "UNVERIFIED" end), (.state | join(",")), .config.url] | @tsv' |
+  list_destinations |
+    jq -r '[.id, .name, (if .verified then "verified" else "UNVERIFIED" end), ((.state // []) | join(",")), .config.url] | @tsv' |
     column -t -s $'\t'
 }
 
 cmd_status() {
-  api "$MRS_API" GET "/destination/$(require_id)" | show
+  api GET "$DEST/$(require_id)" | show
 }
 
 cmd_create() {
@@ -85,25 +85,25 @@ cmd_create() {
   local id; id="$(find_id)"
   if [[ -n "$id" ]]; then
     echo "Updating destination '$NAME' ($id) → $url"
-    api "$MRS_API" PATCH "/destination/$id" "$body" >/dev/null
+    api PATCH "$DEST/$id" "$body" >/dev/null
   else
     echo "Creating destination '$NAME' → $url"
-    id=$(api "$MRS_API" POST /destination "$body" | jq -r .id)
+    id=$(api POST "$DEST" "$body" | jq -r .id)
   fi
 
   echo -n "Waiting for verification"
   for _ in $(seq 1 15); do
-    if [[ "$(api "$MRS_API" GET "/destination/$id" | jq -r .verified)" == "true" ]]; then
+    if [[ "$(api GET "$DEST/$id" | jq -r .verified)" == "true" ]]; then
       echo " ✓ verified"
-      api "$MRS_API" GET "/destination/$id" | show
+      api GET "$DEST/$id" | show
       return 0
     fi
     echo -n "."; sleep 2
   done
   echo
   cat >&2 <<EOF
-Destination not verified automatically. The server must echo team $NRFCLOUD_TEAM_ID —
-if you changed NRFCLOUD_TEAM_ID after deploying, run scripts/fly-deploy.sh again.
+Destination not verified automatically (the server echoes the x-nrfcloud-team-id
+header, so this usually means the verification request never reached it).
 The webhook logged a 6-digit PIN — find it with:
   fly logs --app ${FLY_APP:-<app>} | grep PIN      (or: docker compose logs | grep PIN)
 then run:
@@ -113,28 +113,28 @@ EOF
 }
 
 cmd_test() {
-  api "$MRS_API" POST "/destination/$(require_id)/test" | jq .
+  api POST "$DEST/$(require_id)/test" | jq .
 }
 
 cmd_resend() {
-  api "$MRS_API" POST "/destination/$(require_id)/verification" >/dev/null
+  api POST "$DEST/$(require_id)/verification" >/dev/null
   echo "Verification PIN sent — check the server logs, then: scripts/mrs.sh verify <PIN>"
 }
 
 cmd_verify() {
   [[ "${1:-}" =~ ^[0-9]{6}$ ]] || die "usage: scripts/mrs.sh verify <6-digit PIN>"
-  api "$MRS_API" PATCH "/destination/$(require_id)/verification/confirm" \
+  api PATCH "$DEST/$(require_id)/verification/confirm" \
     "$(jq -n --arg t "$1" '{verificationToken: $t}')" >/dev/null
   echo "Verified ✓"
 }
 
 cmd_delete() {
   local id; id="$(require_id)"
-  api "$MRS_API" DELETE "/destination/$id" >/dev/null
+  api DELETE "$DEST/$id" >/dev/null
   echo "Deleted destination '$NAME' ($id)"
 }
 
 case "${1:-}" in
-  create|status|list|test|resend|verify|delete|team) cmd="$1"; shift; ensure_team; "cmd_$cmd" "$@" ;;
-  *) sed -n '2,22p' "$0"; exit 1 ;;
+  create|status|list|test|resend|verify|delete) require_nrfcloud_config; DEST="$(destinations_url)"; cmd="$1"; shift; "cmd_$cmd" "$@" ;;
+  *) sed -n '2,24p' "$0"; exit 1 ;;
 esac

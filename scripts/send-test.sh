@@ -35,7 +35,7 @@ send() { # device label probability
   msg_id="$(uuid)"
   data=$(jq -cn --arg c "$2" --argjson p "$3" '{classification:$c, probability:$p}')
   body=$(jq -cn \
-    --arg team "${NRFCLOUD_TEAM_ID:-test-team}" --arg dev "$1" --arg id "$msg_id" \
+    --arg team "test-team" --arg dev "$1" --arg id "$msg_id" \
     --arg data "$data" --argjson ts "$now_ms" --arg at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     '{type:"device.messages", timestamp:$at, messages:[{
         teamId:$team, deviceId:$dev, messageId:$id, receivedAt:$at,

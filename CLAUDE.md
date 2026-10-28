@@ -1,7 +1,9 @@
 # CLAUDE.md
 
 PocketBase + Docker version of the SmartParcel demo (original Supabase version: `../ai_edge_demo`).
-Meant for partners to replicate on their own nRF Cloud team and Fly.io account. See README.md.
+Meant for partners to replicate on their own nRF Cloud organization and Fly.io account.
+nRF Cloud access is an Organization Auth Token against the org/project scoped
+`api.nrfcloud.com/v1/organizations/{ORG}/projects/{PROJECT}/destinations` endpoints. See README.md.
 
 ## Layout
 

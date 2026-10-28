@@ -71,7 +71,7 @@ nrfutil device recover --serial-number <JLINK_SERIAL> --x-family nrf91
 1. Disconnect the probe, power-cycle the Thingy:91 X (**SW1** off and on) and put the cover
    back on.
 2. If the Thingy:91 X isn't on your nRF Cloud account yet, claim it (next section). If it is
-   already in **Fleet → Devices** on your team, skip ahead.
+   already in **Fleet → Devices** in your organization, skip ahead.
 3. Once it's connected to LTE and nRF Cloud, move the parcel. Classifications should appear
    on the dashboard within seconds. If they don't:
    - `scripts/mrs.sh status` shows delivery errors.
@@ -80,8 +80,9 @@ nrfutil device recover --serial-number <JLINK_SERIAL> --x-family nrf91
 ## Claim the device on your nRF Cloud account
 
 A Thingy:91 X can only send data to nRF Cloud after it has been claimed (onboarded) to an
-account. It must be claimed to the **same team that owns your MRS destination**, otherwise
-its messages never reach your dashboard. A device belongs to one team at a time. If it's
+account. It must be claimed to the **same organization that owns your MRS destination**,
+otherwise its messages never reach your dashboard. A device belongs to one organization at a
+time. If it's
 still on another account (for example a colleague's or a previous demo's), remove it there
 first.
 
@@ -105,8 +106,8 @@ Until it's claimed, the device log shows `Provisioning failed, device not claime
 
 ### 2. Add the device in nRF Cloud
 
-1. Log in to [nrfcloud.com](https://nrfcloud.com) and switch to the team that owns your MRS
-   destination (the team behind the `NRFCLOUD_API_KEY` in `.env`).
+1. Log in to [nrfcloud.com](https://nrfcloud.com) and open the organization in `NRFCLOUD_ORG`
+   (the one that owns your MRS destination).
 2. Go to **Fleet → Devices** and select **Add devices**.
 3. Choose **nRF91 Series** as the device type.
 4. Paste the token into **Attestation token**, preview it, and confirm.

@@ -5,9 +5,8 @@
 #
 # Idempotent — run it again to redeploy. Steps:
 #   1. generate webhook token/secret into .env (if missing)
-#   2. look up your nRF Cloud team ID (if NRFCLOUD_API_KEY is set)
-#   3. create the Fly app and a 1 GB volume for the SQLite database
-#   4. set secrets and deploy a single machine
+#   2. create the Fly app and a 1 GB volume for the SQLite database
+#   3. set secrets and deploy a single machine
 set -euo pipefail
 source "$(dirname "$0")/lib.sh"
 need fly openssl
@@ -22,12 +21,7 @@ fly auth whoami >/dev/null 2>&1 || die "not logged in to Fly — run: fly auth l
 [[ -n "${NRFCLOUD_WEBHOOK_TOKEN:-}" ]]  || set_env NRFCLOUD_WEBHOOK_TOKEN  "$(openssl rand -hex 24)"
 [[ -n "${NRFCLOUD_WEBHOOK_SECRET:-}" ]] || set_env NRFCLOUD_WEBHOOK_SECRET "$(openssl rand -hex 32)"
 
-# ── 2. Team ID (needed so the MRS destination verifies automatically) ──
-# Also catches an API key from another team than NRFCLOUD_TEAM_ID before anything is deployed.
-[[ -n "${NRFCLOUD_API_KEY:-}" ]] && ensure_team
-[[ -n "${NRFCLOUD_TEAM_ID:-}" ]] || echo "warning: NRFCLOUD_TEAM_ID unknown — MRS verification will need the PIN (scripts/mrs.sh verify)" >&2
-
-# ── 3. App + volume ──
+# ── 2. App + volume ──
 if ! fly status --app "$FLY_APP" >/dev/null 2>&1; then
   echo "Creating Fly app $FLY_APP"
   if [[ -n "${FLY_ORG:-}" ]]; then fly apps create "$FLY_APP" --org "$FLY_ORG"
@@ -39,12 +33,11 @@ if [[ "$(fly volumes list --app "$FLY_APP" --json | jq '[.[] | select(.name == "
   fly volumes create pb_data --app "$FLY_APP" --region "$REGION" --size 1 --yes
 fi
 
-# ── 4. Secrets + deploy ──
+# ── 3. Secrets + deploy ──
 secrets=(
   "NRFCLOUD_WEBHOOK_TOKEN=$NRFCLOUD_WEBHOOK_TOKEN"
   "NRFCLOUD_WEBHOOK_SECRET=$NRFCLOUD_WEBHOOK_SECRET"
 )
-[[ -n "${NRFCLOUD_TEAM_ID:-}" ]] && secrets+=("NRFCLOUD_TEAM_ID=$NRFCLOUD_TEAM_ID")
 if [[ -n "${PB_ADMIN_EMAIL:-}" && -n "${PB_ADMIN_PASSWORD:-}" ]]; then
   secrets+=("PB_ADMIN_EMAIL=$PB_ADMIN_EMAIL" "PB_ADMIN_PASSWORD=$PB_ADMIN_PASSWORD")
 fi
