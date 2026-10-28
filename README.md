@@ -29,6 +29,7 @@ Thingy:91 X ── LTE-M/NB-IoT ──► nRF Cloud ── MRS webhook (HTTPS) �
 | `Dockerfile`, `docker-compose.yml` | Container image and local run |
 | `fly.toml`, `scripts/fly-deploy.sh` | Fly.io deployment |
 | `scripts/mrs.sh` | Create, verify, test and delete the MRS destination on **your** nRF Cloud team |
+| `firmware/parcel_tracker.hex` | Thingy:91 X (nRF9151) firmware, flashed with a debug probe. See [firmware/README.md](firmware/README.md) |
 | `scripts/send-test.sh` | Sends fake signed nRF Cloud deliveries, so you can demo without a device |
 
 ### Differences from the Supabase version
@@ -49,7 +50,8 @@ Thingy:91 X ── LTE-M/NB-IoT ──► nRF Cloud ── MRS webhook (HTTPS) �
   copy the key from User Account → Current Team Details. The scripts refuse to run when the key's
   team differs from `NRFCLOUD_TEAM_ID`; leave `NRFCLOUD_TEAM_ID` empty to use the key's team.
   A Developer plan includes one free MRS destination.
-- A Thingy:91 X running the SmartParcel firmware, or use `scripts/send-test.sh`.
+- A Thingy:91 X running the SmartParcel firmware (`firmware/parcel_tracker.hex`; see
+  [firmware/README.md](firmware/README.md) for how to flash it), or use `scripts/send-test.sh`.
 - `docker`, `curl`, `jq`, `openssl`, and for Fly.io [`flyctl`](https://fly.io/docs/flyctl/install/).
 
 ## Quick start: Fly.io
