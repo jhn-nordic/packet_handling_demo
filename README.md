@@ -65,7 +65,16 @@ scripts/fly-deploy.sh      # creates the app + volume, generates webhook token/s
 scripts/mrs.sh create      # creates the MRS destination → https://$FLY_APP.fly.dev/api/nrfcloud/webhook
 ```
 
-`mrs.sh create` waits until nRF Cloud reports the destination as **verified**. Then open
+`mrs.sh create` waits until nRF Cloud reports the destination as **verified**.
+
+Then get the Thingy:91 X onto the same team:
+
+1. Flash `firmware/parcel_tracker.hex`.
+2. If the device isn't claimed on your nRF Cloud account yet, claim it: run
+   `at at%attesttoken` in the device shell, paste the token under **Fleet → Devices → Add
+   devices**, then run `att_cloud provision`.
+
+Both steps are covered in [firmware/README.md](firmware/README.md). Then open
 `https://<FLY_APP>.fly.dev/` and move the parcel.
 
 No device at hand? Run `scripts/send-test.sh --demo`, which plays a journey from two fake parcels
@@ -177,4 +186,6 @@ webhook (with the token/secret) can write.
 | Destination stays unverified | `NRFCLOUD_TEAM_ID` set as a Fly secret? `fly logs \| grep PIN` → `mrs.sh verify` |
 | Webhook logs `invalid x-api-key` / `invalid signature` | `.env` token/secret differ from the Fly secrets. Run `fly-deploy.sh`, then `mrs.sh create` |
 | Dashboard stays on "Connecting…" | Browser console; is `/api/health` reachable from the browser? |
+| Device log says `Provisioning failed, device not claimed` | Claim it to your team: see [firmware/README.md](firmware/README.md#claim-the-device-on-your-nrf-cloud-account) |
+| Device is connected but nothing reaches the webhook | The device is on a different nRF Cloud team than the MRS destination. Check **Fleet → Devices** on the team behind `NRFCLOUD_API_KEY` |
 | Messages arrive but no classification | Check `raw_messages` in the admin UI and whether `message.data` holds `classification`. `mrs.sh status` lists delivery errors |
