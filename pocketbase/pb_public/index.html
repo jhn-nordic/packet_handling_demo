@@ -1,0 +1,1182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nordic SmartParcel</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600;700;800;900&family=IBM+Plex+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --nordic-blue: #0032A0;
+    --nordic-sky: #00A9CE;
+    --nordic-cyan: #00D4AA;
+    --bg: #06090F;
+    --bg-panel: #0C1018;
+    --bg-raised: #111620;
+    --border: #1A2235;
+    --border-light: #243049;
+    --text-1: #F0F4F8;
+    --text-2: #8B9DC3;
+    --text-3: #4A5A78;
+    --green: #10B981;
+    --green-dim: rgba(16,185,129,0.12);
+    --red: #EF4444;
+    --red-dim: rgba(239,68,68,0.10);
+    --orange: #F59E0B;
+    --orange-dim: rgba(245,158,11,0.10);
+    --blue: #6366F1;
+    --blue-dim: rgba(99,102,241,0.10);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-1);
+    font-family: 'Outfit', sans-serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    cursor: default;
+  }
+
+  /* ── BACKGROUND GRID ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 50% 50% at 30% 40%, rgba(0,169,206,0.03) 0%, transparent 70%),
+      radial-gradient(ellipse 40% 40% at 70% 60%, rgba(0,50,160,0.03) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      repeating-linear-gradient(90deg, transparent 0, transparent 79px, rgba(26,34,53,0.25) 79px, rgba(26,34,53,0.25) 80px),
+      repeating-linear-gradient(0deg, transparent 0, transparent 79px, rgba(26,34,53,0.25) 79px, rgba(26,34,53,0.25) 80px);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── LAYOUT ── */
+  .app {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: 52px 1fr;
+    height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(12,16,24,0.8);
+    backdrop-filter: blur(12px);
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .brand {
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: -0.5px;
+    color: var(--text-1);
+  }
+
+  .brand span {
+    font-weight: 400;
+    color: var(--text-3);
+  }
+
+  .live-pill {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--nordic-cyan);
+    background: rgba(0,212,170,0.06);
+    border: 1px solid rgba(0,212,170,0.15);
+    padding: 5px 14px;
+    border-radius: 100px;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--nordic-cyan);
+    animation: livePulse 2s ease-in-out infinite;
+  }
+
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,212,170,0.4); }
+    50% { opacity: 0.6; box-shadow: 0 0 0 6px rgba(0,212,170,0); }
+  }
+
+  .header-specs {
+    display: flex;
+    gap: 28px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .header-specs strong {
+    color: var(--text-2);
+    font-weight: 500;
+  }
+
+  .header-specs .idle-reset-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header-specs .idle-reset-label {
+    font-size: 10px;
+    color: var(--text-3);
+    white-space: nowrap;
+  }
+
+  .header-specs select.idle-reset-select {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-2);
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238B9DC3' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 26px;
+  }
+
+  .header-specs select.idle-reset-select:hover {
+    border-color: var(--border-light);
+  }
+
+  .header-specs select.idle-reset-select:focus {
+    outline: none;
+    border-color: var(--nordic-sky);
+  }
+
+  .header-specs [hidden] { display: none !important; }
+
+  .live-pill.offline {
+    color: var(--text-3);
+    background: transparent;
+    border-color: var(--border);
+  }
+  .live-pill.offline .live-dot { background: var(--text-3); animation: none; }
+
+  /* ── MAIN CONTENT ── */
+  .main {
+    display: grid;
+    grid-template-columns: 1fr 400px;
+    overflow: hidden;
+  }
+
+  /* ── LEFT: BIG STATE DISPLAY ── */
+  .state-area {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Giant state background glow */
+  .state-glow {
+    position: absolute;
+    top: -20%;
+    left: -10%;
+    width: 120%;
+    height: 80%;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.08;
+    transition: background 0.8s ease;
+    pointer-events: none;
+  }
+
+  .state-hero {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 1;
+    padding-bottom: 40px;
+  }
+
+  /* State icon */
+  .state-icon {
+    width: 120px;
+    height: 120px;
+    border-radius: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 52px;
+    margin-bottom: 28px;
+    transition: background 0.5s, border-color 0.5s, transform 0.3s;
+    border: 2px solid transparent;
+    position: relative;
+  }
+
+  .state-icon::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 34px;
+    border: 1px solid transparent;
+    transition: border-color 0.5s;
+  }
+
+  /* State name — the big one */
+  .state-label {
+    font-size: 72px;
+    font-weight: 800;
+    letter-spacing: -3px;
+    line-height: 1;
+    text-align: center;
+    transition: color 0.4s;
+    margin-bottom: 12px;
+  }
+
+  .state-sublabel {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text-3);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* Classification bars */
+  .class-bars {
+    width: 520px;
+    max-width: 90%;
+    margin-top: 40px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .class-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 6px;
+    height: 28px;
+  }
+
+  .class-bar-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+    width: 120px;
+    text-align: right;
+    flex-shrink: 0;
+    transition: color 0.3s;
+  }
+
+  .class-bar-name.active {
+    color: var(--text-1);
+    font-weight: 600;
+  }
+
+  .class-bar-track {
+    flex: 1;
+    height: 6px;
+    background: rgba(26,34,53,0.6);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .class-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1), background 0.4s;
+    min-width: 0;
+  }
+
+  .class-bar-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    width: 44px;
+    text-align: right;
+    flex-shrink: 0;
+    color: var(--text-3);
+    transition: color 0.3s;
+  }
+
+  .class-bar-pct.active {
+    color: var(--text-1);
+    font-weight: 600;
+  }
+
+  /* ── BOTTOM STATS ── */
+  .stats-strip {
+    display: flex;
+    border-top: 1px solid var(--border);
+    background: var(--bg-panel);
+    position: relative;
+    z-index: 1;
+  }
+
+  .stat-cell {
+    flex: 1;
+    padding: 18px 24px;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .stat-cell:last-child { border-right: none; }
+
+  .stat-cell-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .stat-cell-value {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -1px;
+  }
+
+  .stat-cell-sub {
+    font-size: 12px;
+    color: var(--text-3);
+  }
+
+  /* Quality ring in stats */
+  .quality-cell {
+    flex: 1.3;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 24px;
+  }
+
+  .quality-ring-wrap {
+    position: relative;
+    width: 72px;
+    height: 72px;
+    flex-shrink: 0;
+  }
+
+  .quality-ring-svg { transform: rotate(-90deg); }
+  .quality-ring-bg { fill: none; stroke: var(--border); stroke-width: 5; }
+  .quality-ring-fill { fill: none; stroke-width: 5; stroke-linecap: round; transition: stroke-dashoffset 1s, stroke 0.5s; }
+
+  .quality-ring-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    background: var(--bg-panel);
+    overflow: hidden;
+  }
+
+  .rp-header {
+    padding: 18px 24px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .rp-title {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-3);
+  }
+
+  .rp-subtitle {
+    font-size: 13px;
+    color: var(--text-2);
+    margin-top: 4px;
+  }
+
+  /* Journey timeline */
+  .journey {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  .journey::-webkit-scrollbar { width: 3px; }
+  .journey::-webkit-scrollbar-track { background: transparent; }
+  .journey::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 2px; }
+
+  .journey-event {
+    display: flex;
+    gap: 14px;
+    padding: 14px 24px;
+    border-bottom: 1px solid rgba(26,34,53,0.4);
+    animation: eventIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    position: relative;
+  }
+
+  .journey-event:first-child { background: rgba(0,169,206,0.02); }
+
+  @keyframes eventIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .journey-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 20px;
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  .journey-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 2px solid;
+  }
+
+  .journey-connector {
+    width: 1px;
+    flex: 1;
+    background: var(--border);
+    margin-top: 4px;
+  }
+
+  .journey-body { flex: 1; min-width: 0; }
+
+  .journey-state-name {
+    font-weight: 600;
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+
+  .journey-detail {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-3);
+  }
+
+  .journey-time {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    flex-shrink: 0;
+    padding-top: 2px;
+  }
+
+  .journey-duration {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    color: var(--text-3);
+    margin-top: 3px;
+  }
+
+  /* ── FOOTER MESSAGE ── */
+  .rp-footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    background: var(--bg-raised);
+  }
+
+  .rp-footer-msg {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    line-height: 1.6;
+    color: var(--text-3);
+    text-align: center;
+  }
+
+  .rp-footer-msg strong {
+    color: var(--nordic-cyan);
+    font-weight: 600;
+  }
+
+  /* ── ALERT FLASH ── */
+  .alert-flash {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0;
+  }
+
+  .alert-flash.fire {
+    animation: alertFlash 0.8s ease-out;
+  }
+
+  @keyframes alertFlash {
+    0% { opacity: 0.25; }
+    100% { opacity: 0; }
+  }
+
+  /* ── STATE-SPECIFIC ANIMATIONS ── */
+  .state-icon.anim-shake { animation: iconShake 0.12s linear infinite; }
+  .state-icon.anim-pulse-red { animation: iconPulseRed 0.6s ease-out; }
+  .state-icon.anim-fall { animation: iconFall 1.5s ease-in-out infinite; }
+  .state-icon.anim-tilt { animation: iconTilt 2s ease-in-out infinite; }
+  .state-icon.anim-walk { animation: iconWalk 1s ease-in-out infinite; }
+  .state-icon.anim-drive { animation: iconDrive 0.3s ease-in-out infinite; }
+
+  @keyframes iconShake {
+    0%, 100% { transform: translate(0,0) rotate(0deg); }
+    25% { transform: translate(4px,-2px) rotate(2deg); }
+    50% { transform: translate(-3px,2px) rotate(-1deg); }
+    75% { transform: translate(3px,-1px) rotate(1deg); }
+  }
+
+  @keyframes iconPulseRed {
+    0% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+
+  @keyframes iconFall {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(8px) rotate(5deg); }
+  }
+
+  @keyframes iconTilt {
+    0%, 100% { transform: rotate(-8deg); }
+    50% { transform: rotate(8deg); }
+  }
+
+  @keyframes iconWalk {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+
+  @keyframes iconDrive {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(2px); }
+  }
+
+  /* Responsive: smaller screens */
+  @media (max-width: 1100px) {
+    .state-label { font-size: 48px; letter-spacing: -2px; }
+    .class-bars { width: 400px; }
+    .header-specs { gap: 16px; font-size: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-left">
+      <div class="brand">Nordic <span>SmartParcel</span></div>
+      <div class="live-pill offline" id="live-pill"><div class="live-dot"></div> <span id="live-text">Connecting…</span></div>
+    </div>
+    <div class="header-specs">
+      <div class="idle-reset-wrap" id="device-filter-wrap" hidden>
+        <span class="idle-reset-label">Device:</span>
+        <select class="idle-reset-select" id="device-select" title="Show classifications from one device only">
+          <option value="">All devices</option>
+        </select>
+      </div>
+      <div class="idle-reset-wrap">
+        <span class="idle-reset-label">Reset session after idle:</span>
+        <select class="idle-reset-select" id="idle-reset-select" title="Reset session after package stays idle for this duration">
+          <option value="0">Never</option>
+          <option value="30000">30 seconds</option>
+          <option value="60000">1 minute</option>
+          <option value="120000" selected>2 minutes</option>
+          <option value="300000">5 minutes</option>
+          <option value="600000">10 minutes</option>
+        </select>
+      </div>
+      <div>100% on-device · <strong>Neuton AI × nRF9151</strong></div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <div class="main">
+    <!-- LEFT -->
+    <div class="state-area">
+      <div class="state-glow" id="state-glow"></div>
+
+      <div class="state-hero">
+        <div class="state-icon" id="state-icon">📦</div>
+        <div class="state-label" id="state-label">IDLE</div>
+        <div class="state-sublabel" id="state-sublabel">Package at rest · Monitoring active</div>
+
+        <!-- Classification probability bars -->
+        <div class="class-bars" id="class-bars"></div>
+      </div>
+
+      <!-- Stats strip -->
+      <div class="stats-strip">
+        <div class="stat-cell">
+          <div class="stat-cell-label">Session</div>
+          <div class="stat-cell-value" id="s-session" style="color:var(--text-2)">00:00</div>
+          <div class="stat-cell-sub">elapsed</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-cell-label">Events</div>
+          <div class="stat-cell-value" id="s-events" style="color:var(--nordic-sky)">0</div>
+          <div class="stat-cell-sub">classifications</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-cell-label">Alerts</div>
+          <div class="stat-cell-value" id="s-alerts" style="color:var(--orange)">0</div>
+          <div class="stat-cell-sub">impact · shake · freefall</div>
+        </div>
+        <div class="stat-cell quality-cell">
+          <div class="quality-ring-wrap">
+            <svg class="quality-ring-svg" width="72" height="72" viewBox="0 0 72 72">
+              <circle class="quality-ring-bg" cx="36" cy="36" r="30"/>
+              <circle class="quality-ring-fill" id="q-ring" cx="36" cy="36" r="30"
+                stroke-dasharray="188.5" stroke-dashoffset="0" stroke="var(--green)"/>
+            </svg>
+            <div class="quality-ring-num" id="q-score">100</div>
+          </div>
+          <div>
+            <div class="stat-cell-label">Shipment Quality</div>
+            <div class="stat-cell-sub" id="q-verdict" style="margin-top:6px; font-size:13px; color:var(--green); font-weight:600;">Excellent</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL -->
+    <div class="right-panel">
+      <div class="rp-header">
+        <div class="rp-title">Journey Timeline</div>
+        <div class="rp-subtitle" id="rp-device">Device: Thingy:91 X — <span id="rp-device-id">waiting for data…</span></div>
+      </div>
+
+      <div class="journey" id="journey"></div>
+
+      <div class="rp-footer">
+        <div class="rp-footer-msg">
+          <strong>Neuton AI</strong> model running on <strong>nRF9151</strong><br>
+          100% on-device processing<br>
+          Connectivity via <strong>nRF9151</strong> LTE-M / NB-IoT
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ALERT FLASH OVERLAY -->
+<div class="alert-flash" id="alert-flash"></div>
+
+<script>
+// ═══════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════
+
+const PARAMS = new URLSearchParams(location.search);
+
+// PocketBase serves this page from pb_public, so the API is on the same origin.
+// Override with ?pb=https://your-app.fly.dev when opening the file elsewhere.
+const PB_URL = PARAMS.get('pb')
+  || (location.protocol.startsWith('http') ? location.origin : 'http://localhost:8090');
+const PB_SDK = 'https://cdn.jsdelivr.net/npm/pocketbase@0.28.1/dist/pocketbase.umd.js';
+
+// ═══════════════════════════════════════
+//  STATE DEFINITIONS
+// ═══════════════════════════════════════
+
+const STATES = {
+  idle: {
+    label: 'IDLE',
+    sub: 'Package at rest · Monitoring active',
+    icon: '📦',
+    color: '#10B981',
+    iconAnim: '',
+    severity: 'ok',
+  },
+  carrying: {
+    label: 'CARRYING',
+    sub: 'Transported by hand · Walking motion detected',
+    icon: '🚶',
+    color: '#00A9CE',
+    iconAnim: 'anim-walk',
+    severity: 'ok',
+  },
+  car: {
+    label: 'IN CAR',
+    sub: 'Transported by vehicle · Engine vibration pattern',
+    icon: '🚚',
+    color: '#6366F1',
+    iconAnim: 'anim-drive',
+    severity: 'ok',
+  },
+  shaking: {
+    label: 'SHAKING',
+    sub: 'Rough handling detected · Excessive vibration',
+    icon: '⚠️',
+    color: '#F59E0B',
+    iconAnim: 'anim-shake',
+    severity: 'warn',
+  },
+  impact: {
+    label: 'IMPACT',
+    sub: 'High-G impact detected · Possible damage event',
+    icon: '💥',
+    color: '#EF4444',
+    iconAnim: 'anim-pulse-red',
+    severity: 'alert',
+  },
+  freefall: {
+    label: 'FREE FALL',
+    sub: 'Zero-G detected · Package dropped',
+    icon: '⬇️',
+    color: '#EF4444',
+    iconAnim: 'anim-fall',
+    severity: 'alert',
+  },
+  placed: {
+    label: 'PLACED',
+    sub: 'Package set down · Stationary on surface',
+    icon: '📋',
+    color: '#10B981',
+    iconAnim: '',
+    severity: 'ok',
+  },
+};
+
+const CLASS_NAMES = ['idle', 'carrying', 'car', 'shaking', 'impact', 'freefall', 'placed'];
+const CLASS_LABELS = {
+  idle: 'Idle',
+  carrying: 'Carrying',
+  car: 'In Car',
+  shaking: 'Shaking',
+  impact: 'Impact',
+  freefall: 'Free Fall',
+  placed: 'Placed',
+};
+
+// ═══════════════════════════════════════
+//  APP STATE
+// ═══════════════════════════════════════
+
+let current = 'idle';
+let sessionStart = Date.now();
+let idleStartTime = Date.now();  // when we last entered idle state
+let eventCount = 0;
+let alertCount = 0;
+let quality = 100;
+let lastStateTime = Date.now();
+
+// ═══════════════════════════════════════
+//  INIT CLASSIFICATION BARS
+// ═══════════════════════════════════════
+
+function initBars() {
+  const container = document.getElementById('class-bars');
+  CLASS_NAMES.forEach(cls => {
+    const row = document.createElement('div');
+    row.className = 'class-bar-row';
+    row.innerHTML = `
+      <div class="class-bar-name" id="cb-name-${cls}">${CLASS_LABELS[cls]}</div>
+      <div class="class-bar-track">
+        <div class="class-bar-fill" id="cb-fill-${cls}" style="width:0%;background:${STATES[cls].color}"></div>
+      </div>
+      <div class="class-bar-pct" id="cb-pct-${cls}">0%</div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// ═══════════════════════════════════════
+//  APPLY CLASSIFICATION
+// ═══════════════════════════════════════
+
+function applyClassification(state, probabilities, opts = {}) {
+  const prev = current;
+  current = state;
+  const cfg = STATES[state];
+  const skipEvent = opts.skipEvent || false;
+  const skipJourney = opts.skipJourney || false;
+
+  // Track when we entered idle (for idle-reset timer)
+  if (state === 'idle' && prev !== 'idle') {
+    idleStartTime = Date.now();
+  }
+
+  // ── Hero display ──
+  document.getElementById('state-label').textContent = cfg.label;
+  document.getElementById('state-label').style.color = cfg.color;
+  document.getElementById('state-sublabel').textContent = cfg.sub;
+
+  const icon = document.getElementById('state-icon');
+  icon.textContent = cfg.icon;
+  icon.className = 'state-icon ' + cfg.iconAnim;
+  icon.style.background = cfg.color + '12';
+  icon.style.borderColor = cfg.color + '30';
+
+  // Glow
+  document.getElementById('state-glow').style.background = cfg.color;
+
+  // ── Probability bars ──
+  CLASS_NAMES.forEach(cls => {
+    const pct = probabilities[cls] || 0;
+    const fill = document.getElementById('cb-fill-' + cls);
+    const pctEl = document.getElementById('cb-pct-' + cls);
+    const nameEl = document.getElementById('cb-name-' + cls);
+
+    fill.style.width = cls === state ? (pct * 100).toFixed(1) + '%' : '0%';
+    fill.style.background = cls === state ? cfg.color : 'var(--text-3)';
+    fill.style.opacity = cls === state ? '1' : '0.25';
+    pctEl.textContent = cls === state ? (pct * 100).toFixed(1) + '%' : '';
+    pctEl.className = 'class-bar-pct' + (cls === state ? ' active' : '');
+    nameEl.className = 'class-bar-name' + (cls === state ? ' active' : '');
+  });
+
+  // ── Counters ──
+  if (!skipEvent) {
+    eventCount++;
+    document.getElementById('s-events').textContent = eventCount;
+
+    if (cfg.severity === 'warn' || cfg.severity === 'alert') {
+      alertCount++;
+      document.getElementById('s-alerts').textContent = alertCount;
+    }
+
+    // ── Quality score ──
+    if (state === 'impact') quality = Math.max(0, quality - 12);
+    if (state === 'freefall') quality = Math.max(0, quality - 10);
+    if (state === 'shaking') quality = Math.max(0, quality - 4);
+  }
+  updateQualityRing();
+
+  // ── Alert flash ──
+  if (!skipEvent && cfg.severity === 'alert') {
+    const flash = document.getElementById('alert-flash');
+    flash.style.background = `radial-gradient(ellipse at 50% 40%, ${cfg.color}30, transparent 70%)`;
+    flash.classList.remove('fire');
+    void flash.offsetWidth;
+    flash.classList.add('fire');
+  }
+
+  // ── Timeline event ──
+  if (!skipJourney) {
+    addJourneyEvent(state, probabilities, prev, opts.device);
+  }
+
+  // ── Duration on previous ──
+  lastStateTime = Date.now();
+}
+
+// ═══════════════════════════════════════
+//  GENERATE SIMULATED PROBABILITIES
+// ═══════════════════════════════════════
+
+function generateProbs(state) {
+  const probs = {};
+  const mainConf = 0.82 + Math.random() * 0.17; // 82-99%
+  let remaining = 1 - mainConf;
+
+  CLASS_NAMES.forEach(cls => {
+    if (cls === state) {
+      probs[cls] = mainConf;
+    } else {
+      const share = Math.random();
+      probs[cls] = share;
+    }
+  });
+
+  // Normalize others to fill remaining
+  const othersSum = CLASS_NAMES.filter(c => c !== state).reduce((s, c) => s + probs[c], 0);
+  CLASS_NAMES.forEach(cls => {
+    if (cls !== state) {
+      probs[cls] = (probs[cls] / othersSum) * remaining;
+    }
+  });
+
+  return probs;
+}
+
+// ═══════════════════════════════════════
+//  JOURNEY TIMELINE
+// ═══════════════════════════════════════
+
+function addJourneyEvent(state, probs, prevState, device) {
+  const journey = document.getElementById('journey');
+  const cfg = STATES[state];
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-US', { hour12: false, hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const conf = (probs[state] * 100).toFixed(1);
+
+  // Calculate duration of previous state
+  const durSec = Math.round((Date.now() - lastStateTime) / 1000);
+  const durStr = durSec < 60 ? durSec + 's' : Math.floor(durSec/60) + 'm ' + (durSec%60) + 's';
+
+  // Update previous event's duration
+  const prevEvents = journey.querySelectorAll('.journey-event');
+  if (prevEvents.length > 0) {
+    const prevDurEl = prevEvents[0].querySelector('.journey-duration');
+    if (prevDurEl) prevDurEl.textContent = '⏱ ' + durStr;
+  }
+
+  const ev = document.createElement('div');
+  ev.className = 'journey-event';
+  ev.innerHTML = `
+    <div class="journey-line">
+      <div class="journey-dot" style="border-color:${cfg.color}; background:${cfg.color}20;"></div>
+      <div class="journey-connector"></div>
+    </div>
+    <div class="journey-body">
+      <div class="journey-state-name" style="color:${cfg.color}">${cfg.label}</div>
+      <div class="journey-detail">Confidence ${conf}%${device ? ' · ' + escapeHtml(deviceLabel(device)) : ''}</div>
+      <div class="journey-duration"></div>
+    </div>
+    <div class="journey-time">${time}</div>
+  `;
+
+  journey.insertBefore(ev, journey.firstChild);
+
+  // Limit to 100 events
+  while (journey.children.length > 100) journey.removeChild(journey.lastChild);
+}
+
+// ═══════════════════════════════════════
+//  QUALITY RING
+// ═══════════════════════════════════════
+
+function updateQualityRing() {
+  const ring = document.getElementById('q-ring');
+  const scoreEl = document.getElementById('q-score');
+  const verdictEl = document.getElementById('q-verdict');
+  const circ = 188.5;
+  const offset = circ * (1 - quality / 100);
+  ring.style.strokeDashoffset = offset;
+
+  let color, verdict;
+  if (quality >= 85) { color = 'var(--green)'; verdict = 'Excellent'; }
+  else if (quality >= 65) { color = 'var(--orange)'; verdict = 'Acceptable'; }
+  else if (quality >= 40) { color = 'var(--orange)'; verdict = 'Concerning'; }
+  else { color = 'var(--red)'; verdict = 'Poor'; }
+
+  ring.style.stroke = color;
+  scoreEl.textContent = quality;
+  scoreEl.style.color = color;
+  verdictEl.textContent = verdict;
+  verdictEl.style.color = color;
+}
+
+// ═══════════════════════════════════════
+//  SESSION RESET
+// ═══════════════════════════════════════
+
+function resetSession() {
+  sessionStart = Date.now();
+  idleStartTime = Date.now();
+  eventCount = 0;
+  alertCount = 0;
+  quality = 100;
+  lastStateTime = Date.now();
+  current = 'idle';
+
+  document.getElementById('s-events').textContent = '0';
+  document.getElementById('s-alerts').textContent = '0';
+  document.getElementById('journey').innerHTML = '';
+  updateQualityRing();
+  applyClassification('idle', generateProbs('idle'), { skipEvent: true, skipJourney: true });
+}
+
+// ═══════════════════════════════════════
+//  SESSION TIMER + IDLE RESET CHECK
+// ═══════════════════════════════════════
+
+setInterval(() => {
+  const sec = Math.floor((Date.now() - sessionStart) / 1000);
+  const mm = String(Math.floor(sec / 60)).padStart(2, '0');
+  const ss = String(sec % 60).padStart(2, '0');
+  document.getElementById('s-session').textContent = mm + ':' + ss;
+
+  // Idle-reset: if in idle for configured duration, reset session
+  const idleResetMs = parseInt(document.getElementById('idle-reset-select').value, 10) || 0;
+  if (idleResetMs > 0 && current === 'idle' && (Date.now() - idleStartTime) >= idleResetMs) {
+    resetSession();
+  }
+}, 1000);
+
+// ═══════════════════════════════════════
+//  DEVICE FILTER
+// ═══════════════════════════════════════
+//
+// The filter appears once more than one device has reported to the account.
+// The selection is kept in the URL (?device=<id>) so a kiosk/booth screen can
+// be pinned to one parcel, and in localStorage for convenience.
+
+const devices = new Map(); // device_id → friendly name ('' if none)
+let selectedDevice = PARAMS.get('device') || readPref('smartparcel.device') || '';
+let lastDevice = '';
+
+function readPref(key) {
+  try { return localStorage.getItem(key); } catch { return null; }
+}
+function writePref(key, value) {
+  try { value ? localStorage.setItem(key, value) : localStorage.removeItem(key); } catch {}
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function deviceLabel(id) {
+  return devices.get(id) || id;
+}
+
+function upsertDevice(rec) {
+  if (rec && rec.device_id) devices.set(rec.device_id, rec.name || '');
+}
+
+function renderDeviceFilter() {
+  const select = document.getElementById('device-select');
+  const ids = [...devices.keys()];
+  if (selectedDevice && !devices.has(selectedDevice)) ids.push(selectedDevice);
+
+  select.innerHTML = '<option value="">All devices</option>' + ids
+    .sort((a, b) => deviceLabel(a).localeCompare(deviceLabel(b)))
+    .map(id => `<option value="${escapeHtml(id)}">${escapeHtml(deviceLabel(id))}</option>`)
+    .join('');
+  select.value = selectedDevice;
+
+  document.getElementById('device-filter-wrap').hidden = ids.length < 2;
+  renderDeviceId();
+}
+
+function renderDeviceId() {
+  const id = selectedDevice || lastDevice;
+  document.getElementById('rp-device-id').textContent =
+    id ? deviceLabel(id) : (devices.size > 1 ? 'all devices' : 'waiting for data…');
+}
+
+document.getElementById('device-select').addEventListener('change', (ev) => {
+  selectedDevice = ev.target.value;
+  writePref('smartparcel.device', selectedDevice);
+  const url = new URL(location.href);
+  selectedDevice ? url.searchParams.set('device', selectedDevice) : url.searchParams.delete('device');
+  history.replaceState(null, '', url);
+  resetSession();
+  renderDeviceId();
+});
+
+// ═══════════════════════════════════════
+//  POCKETBASE REALTIME
+// ═══════════════════════════════════════
+
+function setLive(online) {
+  const pill = document.getElementById('live-pill');
+  pill.classList.toggle('offline', !online);
+  document.getElementById('live-text').textContent = online ? 'Live — Thingy:91 X' : 'Reconnecting…';
+}
+
+function handleClassification(row) {
+  // Columns: device_id, state ('idle' | 'carrying' | 'car' | 'shaking' | 'impact' |
+  //          'freefall' | 'placed'), confidence (0-1), probabilities (optional json)
+  if (selectedDevice && row.device_id !== selectedDevice) return;
+  if (!STATES[row.state]) return; // unknown class, skip
+
+  if (row.device_id && !devices.has(row.device_id)) {
+    devices.set(row.device_id, '');
+    renderDeviceFilter();
+  }
+  lastDevice = row.device_id || lastDevice;
+  renderDeviceId();
+
+  let probs;
+  if (row.probabilities && typeof row.probabilities === 'object') {
+    probs = row.probabilities;
+  } else {
+    // Build probabilities from just the confidence value
+    probs = generateProbs(row.state);
+    if (row.confidence) probs[row.state] = row.confidence;
+  }
+
+  // Tag timeline entries with the device when several are shown together
+  const device = !selectedDevice && devices.size > 1 ? row.device_id : '';
+  applyClassification(row.state, probs, { device });
+}
+
+async function loadDevices(pb) {
+  try {
+    const list = await pb.collection('devices').getFullList({ sort: '-last_seen' });
+    list.forEach(upsertDevice);
+    renderDeviceFilter();
+  } catch (e) {
+    console.error('PocketBase: failed to load devices', e);
+  }
+}
+
+const sdk = document.createElement('script');
+sdk.src = PB_SDK;
+sdk.onload = async () => {
+  const pb = new PocketBase(PB_URL);
+  pb.autoCancellation(false);
+
+  pb.realtime.onDisconnect = () => setLive(false);
+  // Fires on the initial connect and on every reconnect
+  await pb.realtime.subscribe('PB_CONNECT', () => {
+    console.log('PocketBase realtime: connected to', PB_URL);
+    setLive(true);
+    loadDevices(pb);
+  });
+
+  pb.collection('devices').subscribe('*', (e) => {
+    upsertDevice(e.record);
+    renderDeviceFilter();
+  });
+
+  pb.collection('classifications').subscribe('*', (e) => {
+    if (e.action === 'create') handleClassification(e.record);
+  });
+};
+sdk.onerror = () => console.error('Failed to load PocketBase SDK from', PB_SDK);
+document.head.appendChild(sdk);
+
+// ═══════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════
+
+initBars();
+applyClassification('idle', generateProbs('idle'));
+updateQualityRing();
+
+</script>
+</body>
+</html>

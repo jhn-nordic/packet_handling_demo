@@ -1,0 +1,19 @@
+# Local run:  docker compose up --build   →  http://localhost:8090
+#
+# nRF Cloud can't reach localhost — expose it with a tunnel, e.g.
+#   cloudflared tunnel --url http://localhost:8090
+# and pass that URL to: scripts/mrs.sh create <tunnel-url>
+services:
+  smartparcel:
+    build: .
+    ports:
+      - "8090:8090"
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - pb_data:/pb/pb_data
+    restart: unless-stopped
+
+volumes:
+  pb_data:

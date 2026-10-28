@@ -1,0 +1,6 @@
+.git
+.env
+pb_data
+pocketbase/pb_data
+scripts
+*.md

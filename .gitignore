@@ -1,0 +1,4 @@
+.env
+pb_data/
+pocketbase/pb_data/
+.DS_Store
